@@ -1,4 +1,0 @@
-# Netlify: čisté adresy /klient a /klient/akce → jedna šablona landing.html
-# (existující soubory jako admin.html nebo js/api.js mají přednost)
-/:client/:event   /landing.html   200
-/:client          /landing.html   200
