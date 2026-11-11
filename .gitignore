@@ -1,0 +1,10 @@
+.DS_Store
+node_modules/
+*.log
+
+# Jen v počítači, na GitHub nepatří (zveřejňuje se jen složka web/)
+/apps-script/
+/nahled-emailu/
+/pozdeji-platforma/
+/BEZPECNOST.md
+/NAVOD.md
