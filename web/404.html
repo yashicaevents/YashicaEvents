@@ -2,8 +2,8 @@
 <html lang="cs">
 <head>
 <meta charset="utf-8">
-<!-- Bezpečnost: GitHub Pages neumí hlavičky (_headers platí jen na Netlify), proto CSP i tady -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://script.google.com https://script.googleusercontent.com; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+<!-- Bezpečnost: GitHub Pages neumí HTTP hlavičky, proto CSP v <meta>. Vložené skripty povoluje CSP jen podle otisku (sha256) – po úpravě skriptu spusťte nastroje/csp_hashe.py -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-R5RI/C4MZ/35OZnDT1rZi95XgQ1FGf7ZtrmHv8EztiI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://script.google.com https://script.googleusercontent.com; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="robots" content="noindex">
 <title>Přesměrování…</title>
 <script>
