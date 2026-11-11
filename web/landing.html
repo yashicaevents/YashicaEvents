@@ -375,13 +375,14 @@ body { background: var(--white); }
         </div>
         ${r.employeeNo ? `<label class="field"><span class="f-label">Osobní číslo zaměstnance <small>(4 číslice)</small></span>
           <input class="input" name="empNo" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" placeholder="1234" required style="max-width:180px"></label>` : ''}
-        <fieldset class="fs"><legend class="f-label">Strava <small>(můžete zvolit více možností)</small></legend><div class="chips">${chips('diet', r.diets, 'checkbox')}</div></fieldset>
-        <label class="field"><span class="f-label">Alergie nebo intolerance <small>(nepovinné)</small></span>
+        <fieldset class="fs"><legend class="f-label">Strava <small>(můžete zvolit více možností)</small></legend><div class="chips">${chips('diet', r.diets, 'checkbox', false)}</div></fieldset>
+        <fieldset class="fs"><legend class="f-label">Alergie nebo intolerance</legend><div class="chips">${chips('allergyAns', ['Nemám', 'Mám alergii nebo intoleranci'], 'radio', false)}</div></fieldset>
+        <label class="field" id="allergyRow" hidden><span class="f-label">Na co máte alergii nebo intoleranci?</span>
           <input class="input" name="allergies" placeholder="Např. ořechy, celer" maxlength="200"></label>
         <label class="check" id="healthRow" hidden><input type="checkbox" name="healthConsent"><span>Souhlasím se zpracováním údaje o alergii (zdravotní údaj) výhradně pro přípravu jídla na této akci. Bez souhlasu alergii prosím nevyplňujte.</span></label>
-        ${(r.transport || []).length ? `<fieldset class="fs"><legend class="f-label">Doprava na akci</legend><div class="chips">${chips('transport', r.transport)}</div>${(r.busInfo || {}).to ? `<small class="bus-info">🚌 ${esc(r.busInfo.to)}</small>` : ''}
+        ${(r.transport || []).length ? `<fieldset class="fs"><legend class="f-label">Doprava na akci</legend><div class="chips">${chips('transport', r.transport, 'radio', false)}</div>${(r.busInfo || {}).to ? `<small class="bus-info">🚌 ${esc(r.busInfo.to)}</small>` : ''}
           ${routes.length ? `<div class="bus-routes" id="busRoutes" hidden><span class="f-label">Směr svozového autobusu</span><div class="chips">${chips('busRoute', routes, 'radio', false)}</div></div>` : ''}</fieldset>` : ''}
-        ${(r.transportBack || []).length ? `<fieldset class="fs"><legend class="f-label">Doprava z akce</legend><div class="chips">${chips('transportBack', r.transportBack)}</div>${(r.busInfo || {}).back ? `<small class="bus-info">🚌 ${esc(r.busInfo.back)}</small>` : ''}</fieldset>` : ''}
+        ${(r.transportBack || []).length ? `<fieldset class="fs"><legend class="f-label">Doprava z akce</legend><div class="chips">${chips('transportBack', r.transportBack, 'radio', false)}</div>${(r.busInfo || {}).back ? `<small class="bus-info">🚌 ${esc(r.busInfo.back)}</small>` : ''}</fieldset>` : ''}
         <div class="hp" aria-hidden="true"><label>Nevyplňujte<input name="website" tabindex="-1" autocomplete="off"></label></div>
         <div class="form-err" id="formErr" role="alert" hidden></div>
         <div class="form-foot">
@@ -435,7 +436,9 @@ body { background: var(--white); }
     const bus = $('#busRoutes');
     const busOn = () => !!bus && (($('input[name=transport]:checked', form) || {}).value === r.busOption);
     if (bus) form.addEventListener('change', (e) => { if (e.target.name === 'transport') bus.hidden = !busOn(); });
-    form.elements.allergies.addEventListener('input', () => { $('#healthRow').hidden = !form.elements.allergies.value.trim(); });
+    // alergie: nejdřív odpověď Nemám / Mám, pole a souhlas se zdravotním údajem jen u „Mám“
+    const hasAllergy = () => (($('input[name=allergyAns]:checked', form) || {}).value || '').indexOf('Mám ') === 0;
+    form.addEventListener('change', (e) => { if (e.target.name === 'allergyAns') { $('#allergyRow').hidden = $('#healthRow').hidden = !hasAllergy(); if (hasAllergy()) form.elements.allergies.focus(); } });
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       $('#formErr').hidden = true;
@@ -446,19 +449,25 @@ body { background: var(--white); }
       if (f.empNo && !/^\d{4}$/.test(f.empNo.value.trim())) return showErr('Zadejte prosím čtyřmístné osobní číslo zaměstnance.', f.empNo);
       if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(email)) return showErr('Zkontrolujte prosím e-mail.', f.email);
       if (doms.length && !doms.some((x) => email.endsWith('@' + x))) return showErr('Použijte prosím firemní e-mail (@' + doms.join(', @') + ').', f.email);
-      if (!f.consent.checked) return showErr('Potvrďte prosím souhlas se zpracováním údajů.');
-      if (f.allergies.value.trim() && !f.healthConsent.checked) return showErr('U alergie potvrďte prosím souhlas se zpracováním zdravotního údaje, nebo pole nechte prázdné.', f.healthConsent);
+      // všechna pole jsou povinná – dál nepustíme, dokud není vše vyplněné
       const diets = $$('input[name=diet]:checked', form).map((x) => x.value);
       if (!diets.length) return showErr('Vyberte prosím stravu.', $('input[name=diet]', form));
+      if (!$('input[name=allergyAns]:checked', form)) return showErr('Vyberte prosím, jestli máte alergii nebo intoleranci.', $('input[name=allergyAns]', form));
+      if (hasAllergy() && !f.allergies.value.trim()) return showErr('Napište prosím, na co máte alergii nebo intoleranci.', f.allergies);
+      if (hasAllergy() && !f.healthConsent.checked) return showErr('U alergie potvrďte prosím souhlas se zpracováním zdravotního údaje.', f.healthConsent);
+      const transport = ($('input[name=transport]:checked', form) || {}).value || '';
+      if ((r.transport || []).length && !transport) return showErr('Vyberte prosím dopravu na akci.', $('input[name=transport]', form));
       const route = ($('input[name=busRoute]:checked', form) || {}).value;
       if (busOn() && !route) return showErr('Vyberte prosím směr svozového autobusu.', $('input[name=busRoute]', form));
-      const transport = ($('input[name=transport]:checked', form) || {}).value || '';
+      const transportBack = ($('input[name=transportBack]:checked', form) || {}).value || '';
+      if ((r.transportBack || []).length && !transportBack) return showErr('Vyberte prosím dopravu z akce.', $('input[name=transportBack]', form));
+      if (!f.consent.checked) return showErr('Potvrďte prosím souhlas se zpracováním údajů.', f.consent);
       const payload = {
-        event: ev.id, name, email, allergies: f.allergies.value.trim(),
-        website: f.website.value, consent: f.consent.checked, healthConsent: f.healthConsent.checked,
+        event: ev.id, name, email, allergies: hasAllergy() ? f.allergies.value.trim() : '', noAllergies: !hasAllergy(),
+        website: f.website.value, consent: f.consent.checked, healthConsent: hasAllergy() && f.healthConsent.checked,
         diet: diets.join(', '), diets,
         transport: busOn() ? transport + ' – ' + route : transport,
-        transportBack: ($('input[name=transportBack]:checked', form) || {}).value || '',
+        transportBack,
         empNo: f.empNo ? f.empNo.value.trim() : '',
         guests: 0, guestNames: [], guestDiets: [], // doprovod se neregistruje
       };
@@ -497,6 +506,7 @@ body { background: var(--white); }
     $('#again').addEventListener('click', () => {
       const form = $('#regForm'); form.reset();
       const box = $('#guestRows'); if (box) { box.innerHTML = ''; box.hidden = true; }
+      $('#allergyRow').hidden = $('#healthRow').hidden = true;
       done.hidden = true; form.hidden = false; form.elements.name.focus();
     });
   }
