@@ -14,9 +14,8 @@ window.PLATFORM = {
   // Při změně je upravte i v CONFIG v Code.gs (Code.gs určuje, co se uloží a co přijde e-mailem).
   // Dřív se tu přepisovaly údaje akce kvůli starší verzi Apps Scriptu. Teď je zdrojem pravdy Code.gs.
   OVERRIDES: {},
-  DEMO_SCANNER_PIN: '2412',     // jen pro demo bez API_URL (naostro chrání skener klíč v Apps Scriptu)
 
   // Čisté adresy /klient/akce (např. /cez/dukovany). Vyžadují přesměrování na hostingu
-  // (soubor _redirects pro Netlify, 404.html pro GitHub Pages). false = landing.html?c=…&e=…
+  // (404.html pro GitHub Pages). false = landing.html?c=…&e=…
   PRETTY_URLS: true,
 };
