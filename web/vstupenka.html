@@ -2,8 +2,8 @@
 <html lang="cs">
 <head>
 <meta charset="utf-8">
-<!-- Bezpečnost: GitHub Pages neumí hlavičky (_headers platí jen na Netlify), proto CSP i tady -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://script.google.com https://script.googleusercontent.com; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+<!-- Bezpečnost: GitHub Pages neumí HTTP hlavičky, proto CSP v <meta>. Vložené skripty povoluje CSP jen podle otisku (sha256) – po úpravě skriptu spusťte nastroje/csp_hashe.py -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-VmWr6H5OscbTRwiJ2IOApZgItPuEQdbg850i/l9Hhqk=' 'sha256-2nP9zX0mplrMbJChRWJmIRXUrMeXiJGiTGb93XBGsPo='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://script.google.com https://script.googleusercontent.com; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
 <!-- Ochrana proti vložení stránky do cizího rámečku (clickjacking) – frame-ancestors v <meta> nefunguje -->
 <style id="antiClickjack">html{display:none!important}</style>
 <script>if (self === top) { var ac = document.getElementById('antiClickjack'); ac.parentNode.removeChild(ac); } else { top.location = self.location; }</script>
@@ -192,7 +192,6 @@ main { padding: clamp(24px, 5vw, 64px) 0 96px; }
 
 <script src="vendor/qrcode.min.js"></script>
 <script src="config.js"></script>
-<script src="js/demo-data.js"></script>
 <script src="js/api.js"></script>
 <script src="js/ui.js"></script>
 <script>
