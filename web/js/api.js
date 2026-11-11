@@ -50,7 +50,7 @@
     const d = dayDate(ev.date); d.setDate(d.getDate() - a.daysBefore); d.setHours(9, 0, 0, 0);
     return d;
   }
-  /** URL veřejných stránek. Čisté adresy /klient/akce, přes landing.html (viz _redirects). */
+  /** URL veřejných stránek. Čisté adresy /klient/akce, přes landing.html (viz 404.html). */
   const urls = {
     root() { return document.baseURI.replace(/[?#].*$/, '').replace(/[^/]*$/, ''); }, // respektuje <base> v landing.html
     /** Čisté adresy (/cez/dukovany) potřebují přesměrování na hostingu; ze souboru (file://) jdou jen přes ?c=&e=. */
