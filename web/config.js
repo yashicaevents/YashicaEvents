@@ -4,7 +4,7 @@
 // ============================================================
 window.PLATFORM = {
   // URL nasazené Apps Script Web App (končí /exec)
-  API_URL: 'https://script.google.com/macros/s/AKfycbx1PoTbm5A-cmvBVLDtSeEyaBRydce897vGPl-xXA-uxUf8VaheyavuDQwpVoCFGFmI/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycbzV9tGl4s75_QFkEQPKIzSV87D3C_9oeUK75i9-4AVBUmgGhtPINpzUiVFk8wzY6fT-LQ/exec',
 
   NAME: 'EventDesk',            // pracovní název platformy
   AGENCY: 'YASHICA EVENTS a.s.', // pořadatel akce (zobrazuje se na webu)
