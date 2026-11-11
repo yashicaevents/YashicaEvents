@@ -1,0 +1,13 @@
+# Netlify: bezpečnostní hlavičky pro všechny stránky (GitHub Pages tento soubor ignoruje)
+# connect-src: jen Apps Script API (script.google.com přesměruje na script.googleusercontent.com)
+# 'unsafe-inline' u skriptů je nutné kvůli vloženým <script> blokům; výstupy jsou escapované (esc()).
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://script.google.com https://script.googleusercontent.com; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Permissions-Policy: camera=(self), microphone=(), geolocation=(), payment=()
+  Cross-Origin-Opener-Policy: same-origin
+
+/config.js
+  Cache-Control: no-cache

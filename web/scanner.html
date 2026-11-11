@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<!-- Bezpečnost: GitHub Pages neumí hlavičky (_headers platí jen na Netlify), proto CSP i tady -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://script.google.com https://script.googleusercontent.com; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+<!-- Ochrana proti vložení stránky do cizího rámečku (clickjacking) – frame-ancestors v <meta> nefunguje -->
+<style id="antiClickjack">html{display:none!important}</style>
+<script>if (self === top) { var ac = document.getElementById('antiClickjack'); ac.parentNode.removeChild(ac); } else { top.location = self.location; }</script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Odbavení · EventDesk</title>
+<meta name="theme-color" content="#1E1F2E">
+<meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<link rel="stylesheet" href="styles.css">
+<style>
+html, body { height: 100%; }
+body { background: var(--bg); overscroll-behavior: none; }
+.screen { min-height: 100dvh; display: flex; flex-direction: column; }
+
+/* ---------- PIN ---------- */
+.pin { justify-content: space-between; padding: max(32px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom)); max-width: 420px; margin: 0 auto; width: 100%; }
+.pin h1 { font: 600 44px/1 var(--sans); letter-spacing: -.03em; margin: 18px 0 28px; }
+.pin-logo { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 36px; font: 700 18px/1 var(--sans); letter-spacing: -.01em; color: #fff; }
+.pin-logo i { width: 28px; height: 28px; border-radius: 8px; background: var(--brand); display: grid; place-items: center; font: 800 14px/1 var(--sans); font-style: normal; }
+.dots { display: flex; gap: 14px; min-height: 18px; }
+.dots i { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--line-2); transition: all .15s; }
+.dots i.on { background: var(--signal); border-color: var(--signal); }
+.dots.shake { animation: shake .35s; }
+@keyframes shake { 25% { transform: translateX(-10px); } 75% { transform: translateX(10px); } }
+.pin-err { color: var(--stop); font-weight: 600; min-height: 24px; margin: 16px 0 0; }
+.pin-hint { color: var(--muted); font: 600 12px/1.4 var(--mono); margin-top: 6px; }
+.keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.key {
+  height: 70px; border-radius: 0; border: 1px solid var(--line); background: var(--bg-2);
+  font: 600 28px/1 var(--sans); cursor: pointer; color: var(--text); transition: background .1s;
+}
+.key:active { background: var(--bg-3); }
+.key.ok { background: var(--brand); color: #fff; border-color: var(--brand); }
+.key.sm { font-size: 20px; }
+
+/* ---------- SCAN ---------- */
+.scan-top {
+  display: grid; grid-template-columns: 1fr auto; gap: 10px 14px; align-items: end;
+  padding: max(14px, env(safe-area-inset-top)) 16px 14px; border-bottom: 1px solid var(--line);
+}
+.scan-top .k { font: 600 10px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.count { font: 600 34px/1 var(--sans); margin-top: 6px; letter-spacing: -.02em; }
+.count span { color: var(--muted); font-weight: 500; font-size: 20px; }
+.bar { grid-column: 1 / -1; height: 4px; border-radius: 0; background: var(--bg-3); overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--signal); transition: width .5s; }
+.top-actions { display: flex; gap: 8px; }
+.icon-btn { width: 44px; height: 44px; border-radius: 0; color: var(--text); border: 1px solid var(--line-2); background: transparent; cursor: pointer; display: grid; place-items: center; }
+.icon-btn svg { width: 20px; height: 20px; }
+
+.viewport { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #000; }
+#reader { width: 100%; max-width: 560px; }
+#reader video { border-radius: 0; }
+#reader img[alt="Info icon"], #reader__dashboard_section_csr span { display: none !important; }
+.cam-msg { position: absolute; inset: auto 16px 16px; padding: 14px 16px; border-left: 3px solid var(--brand); background: rgba(30, 31, 46, .94); color: var(--text); font-size: 15px; margin: 0; }
+.cam-msg:empty { display: none; }
+.hint-line { position: absolute; top: 14px; left: 0; right: 0; text-align: center; font: 600 12px/1 var(--sans); letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.8); pointer-events: none; }
+
+.scan-bottom { display: flex; gap: 10px; padding: 12px 16px max(14px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); }
+.scan-bottom .btn-ghost { flex: 1; min-height: 56px; font-size: 17px; }
+
+/* ---------- RESULT ---------- */
+.result {
+  position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column;
+  padding: max(24px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
+  animation: up .22s cubic-bezier(.2, .9, .3, 1);
+}
+@keyframes up { from { transform: translateY(30px); opacity: 0; } }
+.result.go { background: var(--go); color: var(--ink); }
+.result.wait { background: var(--wait); color: var(--ink); }
+.result.stop { background: var(--stop); color: #fff; }
+.result.pending { background: var(--bg-2); color: var(--text); align-items: center; justify-content: center; }
+.r-top { display: flex; align-items: center; gap: 14px; }
+.r-icon {
+  position: relative; width: 64px; height: 64px; border-radius: 50%; flex: none;
+  display: grid; place-items: center; background: rgba(0, 0, 0, .14); font: 700 30px/1 var(--sans);
+}
+@keyframes punch { from { transform: scale(0); } }
+.r-status { font: 600 22px/1.1 var(--sans); letter-spacing: .1em; text-transform: uppercase; }
+.r-when { display: inline-block; font: 600 20px/1.1 var(--sans); margin-top: 6px; padding: 4px 8px; background: rgba(0,0,0,.14); }
+.r-name { font: 600 clamp(40px, 11vw, 68px)/.98 var(--sans); letter-spacing: -.03em; margin: 28px 0 6px; overflow-wrap: anywhere; }
+.r-dept { font: 600 13px/1.2 var(--sans); letter-spacing: .1em; text-transform: uppercase; opacity: .75; }
+.r-guests { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 26px; padding: 14px 16px; background: rgba(0, 0, 0, .1); }
+.r-guests .k { font-weight: 700; font-size: 17px; }
+.r-guests small { display: block; font-weight: 500; opacity: .75; font-size: 13px; }
+.stepper { display: flex; align-items: center; gap: 4px; }
+.stepper button { width: 48px; height: 48px; border-radius: 0; border: 0; background: rgba(0, 0, 0, .16); font: 600 26px/1 var(--sans); cursor: pointer; color: inherit; }
+.stepper output { min-width: 40px; text-align: center; font: 600 30px/1 var(--sans); }
+.r-diets { list-style: none; padding: 0; margin: 14px 0 0; font-size: 15px; }
+.r-diets li { padding: 7px 0; border-bottom: 1px solid rgba(0, 0, 0, .12); display: flex; justify-content: space-between; gap: 12px; }
+.r-diets li span { opacity: .8; text-align: right; }
+.r-alert { margin-top: 12px; padding: 10px 12px; background: var(--ink); color: var(--wait); font-weight: 700; font-size: 15px; }
+.r-note { margin-top: 12px; padding: 10px 12px; background: rgba(0, 0, 0, .14); font-weight: 600; font-size: 15px; }
+.r-text { font-size: 19px; margin-top: 24px; max-width: 30ch; }
+.r-actions { margin-top: auto; padding-top: 18px; display: flex; gap: 10px; }
+.r-actions button { flex: 1; min-height: 60px; border-radius: 0; border: 0; cursor: pointer; font: 600 16px/1 var(--sans); letter-spacing: .08em; text-transform: uppercase; }
+.r-next { background: var(--ink); color: #fff; font-size: 18px !important; }
+.result.stop .r-next { background: #fff; color: var(--ink); }
+.r-sec { background: rgba(0, 0, 0, .14); color: inherit; flex: 0 0 auto !important; padding: 0 18px; font-size: 14px !important; }
+.r-timer { position: absolute; left: 0; bottom: 0; height: 6px; background: rgba(0, 0, 0, .3); width: 100%; transform-origin: left; }
+.r-timer.run { animation: drain linear forwards; }
+@keyframes drain { to { transform: scaleX(0); } }
+
+/* ---------- SEARCH ---------- */
+.sheet { position: fixed; inset: 0; z-index: 35; background: var(--bg); display: flex; flex-direction: column; padding: max(14px, env(safe-area-inset-top)) 16px 16px; }
+.sheet-head { display: flex; gap: 10px; }
+.sheet-head input {
+  flex: 1; min-height: 54px; padding: 0 16px; border-radius: 0; border: 1px solid var(--line-2);
+  background: var(--bg-2); color: var(--text); font: 500 18px/1 var(--sans);
+}
+.sheet-head input:focus { outline: none; border-color: var(--signal); }
+.results { list-style: none; padding: 0; margin: 14px 0 0; overflow-y: auto; }
+.results button {
+  width: 100%; text-align: left; display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 16px 4px; background: none; border: 0; border-bottom: 1px solid var(--line); cursor: pointer;
+}
+.results b { display: block; font-size: 19px; }
+.results small { color: var(--muted); font: 600 12px/1.3 var(--sans); letter-spacing: .06em; text-transform: uppercase; }
+.badge { font: 600 11px/1 var(--sans); padding: 7px 9px; white-space: nowrap; letter-spacing: .06em; }
+.badge.in { background: var(--go); color: var(--ink); }
+.badge.no { background: var(--bg-3); color: var(--muted); }
+.empty { color: var(--muted); padding: 24px 4px; }
+
+/* ---------- VÝBĚR AKCE ---------- */
+.evsel { padding: max(32px, env(safe-area-inset-top)) 20px 24px; max-width: 460px; margin: 0 auto; width: 100%; }
+.evsel h1 { font: 600 36px/1.05 var(--sans); letter-spacing: -.03em; margin: 18px 0 24px; }
+.evbtn { display: grid; gap: 4px; width: 100%; text-align: left; padding: 20px; margin-bottom: 10px; border: 1px solid var(--line-2); background: var(--bg-2); color: var(--text); cursor: pointer; }
+.evbtn b { font-size: 24px; font-weight: 600; letter-spacing: -.02em; }
+.evbtn span { color: var(--muted); font-size: 15px; }
+.evbtn em { font-style: normal; font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--brand); }
+.evbtn:hover, .evbtn.today { border-color: var(--brand); }
+.ev-chip { display: inline-flex; align-items: center; gap: 8px; margin-top: 8px; padding: 0; border: 0; background: none; color: var(--brand); font: 600 13px/1 var(--sans); letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+</style>
+</head>
+<body class="dark">
+
+<div class="demo-flag" id="demoFlag" hidden>Demo · PIN 2412</div>
+
+<!-- PIN -->
+<section class="screen pin" id="pinScreen">
+  <div>
+    <div class="pin-logo"><i>Y</i>Yashica</div>
+    <div class="label">Odbavení u vstupu</div>
+    <h1>Zadejte PIN</h1>
+    <div class="dots" id="dots" aria-hidden="true"></div>
+    <p class="pin-err" id="pinErr" role="alert"></p>
+    <p class="pin-hint">PIN dostanete od organizátorů. Telefon si nechte nabitý.</p>
+  </div>
+  <div class="keypad" id="keypad">
+    <button class="key" data-k="1">1</button><button class="key" data-k="2">2</button><button class="key" data-k="3">3</button>
+    <button class="key" data-k="4">4</button><button class="key" data-k="5">5</button><button class="key" data-k="6">6</button>
+    <button class="key" data-k="7">7</button><button class="key" data-k="8">8</button><button class="key" data-k="9">9</button>
+    <button class="key sm" data-k="del" aria-label="Smazat">⌫</button><button class="key" data-k="0">0</button><button class="key ok sm" data-k="ok" aria-label="Potvrdit">OK</button>
+  </div>
+</section>
+
+<!-- VÝBĚR AKCE -->
+<section class="screen evsel" id="evScreen" hidden>
+  <div class="pin-logo"><i>Y</i>Yashica</div>
+  <div class="label">Odbavení u vstupu</div>
+  <h1>Kterou akci odbavujete?</h1>
+  <div id="evList"></div>
+</section>
+
+<!-- SCAN -->
+<section class="screen" id="scanScreen" hidden>
+  <header class="scan-top">
+    <div>
+      <div class="k">Dorazilo / potvrzeno</div>
+      <div class="count"><b id="arr">0</b><span> / <span id="exp">0</span></span></div>
+      <button class="ev-chip" id="evChip" type="button"></button>
+    </div>
+    <div class="top-actions">
+      <button class="icon-btn" id="logout" aria-label="Odhlásit">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+    <div class="bar"><i id="barFill"></i></div>
+  </header>
+  <div class="viewport">
+    <div id="reader"></div>
+    <div class="hint-line">Namiřte na QR kód ze vstupenky</div>
+    <p class="cam-msg" id="camMsg"></p>
+  </div>
+  <footer class="scan-bottom">
+    <button class="btn-ghost" id="photoBtn" type="button">
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+      Vyfotit QR
+    </button>
+    <input type="file" id="photoInput" accept="image/*" capture="environment" hidden>
+    <div id="fileReader" hidden></div>
+    <button class="btn-ghost" id="openSearch" type="button">
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M20 20l-4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      Hledat jménem
+    </button>
+  </footer>
+</section>
+
+<!-- RESULT -->
+<div class="result" id="result" hidden role="alertdialog" aria-live="assertive"></div>
+
+<!-- SEARCH -->
+<div class="sheet" id="search" hidden role="dialog" aria-label="Hledat podle jména">
+  <div class="sheet-head">
+    <input id="q" type="search" placeholder="Jméno nebo příjmení…" autocomplete="off" autocapitalize="words" spellcheck="false">
+    <button class="btn-ghost" id="closeSearch" type="button">Zavřít</button>
+  </div>
+  <ul class="results" id="results"></ul>
+</div>
+
+<script src="vendor/html5-qrcode.min.js"></script>
+<script src="config.js"></script>
+<script src="js/demo-data.js"></script>
+<script src="js/api.js"></script>
+<script src="js/ui.js"></script>
+<script>
+(() => {
+  let EVENTS = [];
+  const $ = (s, r = document) => r.querySelector(s);
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const store = {
+    get(k) { try { return sessionStorage.getItem(k) || ''; } catch (e) { return ''; } },
+    set(k, v) { try { v ? sessionStorage.setItem(k, v) : sessionStorage.removeItem(k); } catch (e) {} },
+  };
+  if (API.demo) $('#demoFlag').hidden = false;
+
+  let pin = '', entry = '', scanner = null, busy = false, last = { t: '', at: 0 };
+  let autoTimer = 0, guestTimer = 0, statsTimer = 0, wakeLock = null;
+  let evId = store.get('zn-ev');
+  // Demo: PIN. Ostrá verze: tajný klíč skeneru z aktivačního odkazu (scanner.html#k=…), uložený jen v tomto zařízení.
+  const auth = () => (API.demo ? { pin } : { key: pin });
+  const keyStore = {
+    get() { try { return localStorage.getItem('ed-scan-key') || ''; } catch (e) { return ''; } },
+    set(v) { try { v ? localStorage.setItem('ed-scan-key', v) : localStorage.removeItem('ed-scan-key'); } catch (e) {} },
+  };
+
+  // ---------- zvuk + vibrace ----------
+  let ac = null;
+  function feedback(kind) {
+    try {
+      ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+      const seq = kind === 'ok' ? [[880, .07], [1320, .12]] : kind === 'warn' ? [[620, .1], [620, .1]] : [[200, .35]];
+      let t = ac.currentTime;
+      seq.forEach(([f, d]) => {
+        const o = ac.createOscillator(), g = ac.createGain();
+        o.type = kind === 'bad' ? 'square' : 'sine'; o.frequency.value = f;
+        g.gain.setValueAtTime(.2, t); g.gain.exponentialRampToValueAtTime(.001, t + d);
+        o.connect(g).connect(ac.destination); o.start(t); o.stop(t + d); t += d + .04;
+      });
+    } catch (e) {}
+    if (navigator.vibrate) navigator.vibrate(kind === 'ok' ? 60 : kind === 'warn' ? [80, 60, 80] : [300]);
+  }
+
+  // ---------- PIN ----------
+  function drawDots(err) {
+    const n = Math.max(4, entry.length);
+    $('#dots').innerHTML = Array.from({ length: n }, (_, i) => `<i class="${i < entry.length ? 'on' : ''}"></i>`).join('');
+    if (err) { $('#dots').classList.remove('shake'); void $('#dots').offsetWidth; $('#dots').classList.add('shake'); }
+  }
+  drawDots();
+  $('#keypad').addEventListener('click', (e) => {
+    const k = e.target.closest('.key'); if (!k) return;
+    feedbackInit();
+    const v = k.dataset.k;
+    if (v === 'del') entry = entry.slice(0, -1);
+    else if (v === 'ok') return tryPin(entry);
+    else if (entry.length < 8) entry += v;
+    $('#pinErr').textContent = '';
+    drawDots();
+  });
+  function feedbackInit() { try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+
+  async function tryPin(p) {
+    if (!p) return;
+    $('#pinErr').textContent = 'Ověřuji…';
+    try {
+      const r = await API.call('scannerEvents', API.demo ? { pin: p } : { key: p });
+      EVENTS = r.events;
+      pin = p; if (API.demo) store.set('zn-pin', p); else keyStore.set(p);
+      $('#pinErr').textContent = '';
+      const pre = new URLSearchParams(location.search).get('e');
+      if (pre && evOf(pre)) return pickEv(pre);
+      if (evId && evOf(evId)) return pickEv(evId);
+      if (EVENTS.length === 1) return pickEv(EVENTS[0].id);
+      chooseEv();
+    } catch (e) {
+      entry = ''; drawDots(true);
+      $('#pinErr').textContent = e.message;
+      store.set('zn-pin', ''); if (!API.demo) keyStore.set('');
+    }
+  }
+
+  // ---------- VÝBĚR AKCE ----------
+  const evOf = (id) => EVENTS.find((e) => e.id === id);
+  function chooseEv() {
+    const today = new Date().toDateString();
+    $('#pinScreen').hidden = true; $('#scanScreen').hidden = true; $('#evScreen').hidden = false;
+    $('#evList').innerHTML = EVENTS.map((ev) => {
+      const isToday = API.dayDate(ev.date).toDateString() === today;
+      return `<button class="evbtn ${isToday ? 'today' : ''}" type="button" data-ev="${ev.id}">
+        ${isToday ? '<em>Dnes</em>' : ''}<b>${esc(ev.name)}</b><span>${esc(ev.client)} · ${API.fmt.long(ev.date)}${ev.city ? ' · ' + esc(ev.city) : ''}</span></button>`;
+    }).join('');
+  }
+  $('#evList').addEventListener('click', (e) => { const b = e.target.closest('[data-ev]'); if (b) pickEv(b.dataset.ev); });
+  async function pickEv(id) {
+    evId = id; store.set('zn-ev', id);
+    const ev = evOf(id);
+    $('#evChip').textContent = ev.name + ' · ' + API.fmt.day(ev.date) + (EVENTS.length > 1 ? ' ▾' : '');
+    $('#evScreen').hidden = true;
+    try { const r = await API.call('stats', Object.assign(auth(), { event: evId })); startScan(r.stats); }
+    catch (e) { if (e.code === 'AUTH') return logout(e.message); startScan(null); }
+  }
+  $('#evChip').addEventListener('click', () => { if (EVENTS.length > 1 && !busy) { pauseCam(); chooseEv(); } });
+
+  // ---------- SCAN ----------
+  async function startScan(stats) {
+    $('#pinScreen').hidden = true; $('#evScreen').hidden = true; $('#scanScreen').hidden = false;
+    resumeCam();
+    updateStats(stats);
+    keepAwake();
+    clearInterval(statsTimer);
+    statsTimer = setInterval(refreshStats, 30000);
+    if (!window.Html5Qrcode) { camMsg('Knihovna skeneru se nenačetla, zkontrolujte připojení. Mezitím hledejte jménem.'); return; }
+    if (scanner) return;
+    if (!window.isSecureContext || !navigator.mediaDevices) {
+      camMsg('Živá kamera běží jen přes https. Použijte „Vyfotit QR“ nebo „Hledat jménem“.');
+      return;
+    }
+    try {
+      scanner = new Html5Qrcode('reader', { verbose: false, formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE] });
+      await scanner.start(
+        { facingMode: 'environment' },
+        { fps: 12, aspectRatio: 1, qrbox: (w, h) => { const s = Math.floor(Math.min(w, h) * 0.72); return { width: s, height: s }; } },
+        onScan, () => {}
+      );
+      camMsg('');
+    } catch (e) {
+      scanner = null;
+      camMsg('Kameru se nepodařilo spustit. Povolte přístup ke kameře v nastavení prohlížeče, nebo použijte „Vyfotit QR“.');
+    }
+  }
+  function camMsg(t) { $('#camMsg').textContent = t; }
+  async function keepAwake() {
+    try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
+  }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && pin) keepAwake(); });
+
+  function updateStats(s) {
+    if (!s) return;
+    $('#arr').textContent = s.arrived;
+    $('#exp').textContent = s.expected;
+    $('#barFill').style.width = (s.expected ? Math.min(100, (s.arrived / s.expected) * 100) : 0) + '%';
+  }
+  async function refreshStats() {
+    if (busy) return;
+    try { const r = await API.call('stats', Object.assign(auth(), { event: evId })); updateStats(r.stats); } catch (e) {}
+  }
+
+  function onScan(text) {
+    if (busy) return;
+    // QR vstupenky: „EVT1.<kód>“ – nic jiného (odkazy, cizí QR) se ani neposílá na server
+    const code = API.parseQr(text);
+    if (!code) { busy = true; pauseCam(); return showResult({ result: 'unknown' }); }
+    if (code === last.t && Date.now() - last.at < 4000) return;
+    last = { t: code, at: Date.now() };
+    checkin(String(text).trim());
+  }
+
+  // Záloha bez živé kamery: vyfotit QR fotoaparátem telefonu
+  $('#photoBtn').addEventListener('click', () => { if (!busy) $('#photoInput').click(); });
+  $('#photoInput').addEventListener('change', async (e) => {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!f || busy) return;
+    if (!window.Html5Qrcode) return toastLite('Knihovna skeneru se nenačetla.');
+    busy = true; pauseCam(); camMsg('Čtu QR z fotky…');
+    let text = '';
+    try {
+      const fr = new Html5Qrcode('fileReader', { verbose: false, formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE] });
+      text = await fr.scanFile(f, false);
+      try { fr.clear(); } catch (x) {}
+    } catch (x) {}
+    camMsg(''); busy = false;
+    if (!text) { resumeCam(); return toastLite('Na fotce jsem QR nenašel. Zkuste to blíž a ostřeji.'); }
+    last = { t: '', at: 0 };
+    onScan(text);
+  });
+  function pauseCam() { try { scanner && scanner.pause(true); } catch (e) {} }
+  function resumeCam() { try { scanner && scanner.resume(); } catch (e) {} }
+
+  async function checkin(token) {
+    busy = true; pauseCam();
+    const el = $('#result');
+    el.className = 'result pending'; el.innerHTML = '<span class="spinner" style="width:40px;height:40px;border-width:4px"></span>'; el.hidden = false;
+    try {
+      const r = await API.call('checkin', Object.assign(auth(), { qr: token, event: evId }));
+      updateStats(r.stats);
+      showResult(r, token);
+    } catch (e) {
+      if (e.code === 'AUTH') { closeResult(); return logout(e.message); }
+      showResult({ result: 'error', message: e.message }, token);
+    }
+  }
+
+  function showResult(r, token) {
+    const el = $('#result');
+    clearTimeout(autoTimer);
+    const p = r.person;
+    let cls, icon, status, extra = '';
+    if (r.result === 'ok') { cls = 'go'; icon = '✓'; status = 'Příchod zapsán'; feedback('ok'); extra = '<div class="r-when">' + esc(p.arrivedAt) + '</div>'; }
+    else if (r.result === 'other') { cls = 'stop'; icon = '✕'; status = 'Jiná akce'; feedback('bad'); }
+    else if (r.result === 'duplicate') { cls = 'wait'; icon = '!'; status = 'Už je uvnitř'; feedback('warn'); extra = `<div class="r-when">od ${esc(p.arrivedAt)}</div>`; }
+    else if (r.result === 'unknown') { cls = 'stop'; icon = '✕'; status = 'Neplatná karta'; feedback('bad'); }
+    else { cls = 'stop'; icon = '!'; status = 'Chyba spojení'; feedback('bad'); }
+
+    let body = '';
+    if (p && r.result === 'other') {
+      const oe = r.otherEvent;
+      body = `<div class="r-name">${esc(p.name)}</div><div class="r-dept">${esc([p.empNo ? 'č. ' + p.empNo : '', p.dept].filter(Boolean).join(' · '))}</div>
+        <p class="r-text">Vstupenka je na akci <b>${esc(oe ? oe.name + ' · ' + API.fmt.day(oe.date) : p.event)}</b>, ne na tuhle.</p>`;
+    } else if (p) {
+      const ga = p.guestsArrived == null ? p.guests : p.guestsArrived;
+      const first = p.name.split(' ')[0];
+      body = `
+        <div class="r-name">${esc(p.name)}</div>
+        <div class="r-dept">${esc([p.empNo ? 'č. ' + p.empNo : '', p.dept].filter(Boolean).join(' · '))}</div>
+        ${p.guests ? `<div class="r-guests">
+          <div class="k">Doprovod<small>nahlášeno: ${p.guests}</small></div>
+          <div class="stepper">
+            <button type="button" data-d="-1" aria-label="Ubrat doprovod">−</button>
+            <output id="gOut" aria-live="polite">${ga}</output>
+            <button type="button" data-d="1" aria-label="Přidat doprovod">+</button>
+          </div>
+        </div>` : ''}
+        <ul class="r-diets">
+          <li><b>${esc(first)}</b><span>${esc(p.diet)}</span></li>
+          ${(p.guestDiets || []).map((d, i) => `<li><b>${esc(p.guestNames[i] || 'Host ' + (i + 1))}</b><span>${esc(d)}</span></li>`).join('')}
+        </ul>
+        ${p.allergies ? `<div class="r-alert">⚠ Alergie: ${esc(p.allergies)}</div>` : ''}
+        ${p.attendance === 'NE' ? '<div class="r-note">Pozor: v přihlášce má „Nepřijdu“, s jídlem pro něj nepočítáme.</div>'
+          : p.attendance !== 'ANO' ? '<div class="r-note">Účast nebyla potvrzená.</div>' : ''}`;
+    } else if (r.result === 'unknown') {
+      body = `<p class="r-text">Tenhle kód v seznamu není. Zkuste to přes <b>Hledat jménem</b>.</p>`;
+    } else {
+      body = `<p class="r-text">${esc(r.message || 'Nepodařilo se spojit se serverem.')}</p>`;
+    }
+
+    const actions = r.result === 'ok'
+      ? `<button class="r-sec" data-act="undo" type="button">Zrušit</button><button class="r-next" data-act="next" type="button">Další ▸</button>`
+      : r.result === 'error'
+      ? `<button class="r-sec" data-act="next" type="button">Zavřít</button><button class="r-next" data-act="retry" type="button">Zkusit znovu</button>`
+      : `<button class="r-next" data-act="next" type="button">Další ▸</button>`;
+
+    el.className = 'result ' + cls;
+    el.innerHTML = `
+      <div class="r-top"><div class="r-icon" aria-hidden="true">${icon}</div><div><div class="r-status">${status}</div>${extra}</div></div>
+      ${body}
+      <div class="r-actions">${actions}</div>
+      ${r.result === 'ok' ? '<i class="r-timer run" style="animation-duration:5s"></i>' : ''}`;
+    el.hidden = false;
+
+    if (r.result === 'ok') autoTimer = setTimeout(closeResult, 5000);
+
+    el.onclick = (e) => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      stopAuto();
+      if (b.dataset.d) {
+        const out = $('#gOut');
+        const n = Math.max(0, Math.min((evOf(evId) || {}).maxGuests || 0, +out.textContent + +b.dataset.d));
+        out.textContent = n;
+        clearTimeout(guestTimer);
+        guestTimer = setTimeout(() => API.call('setGuests', Object.assign(auth(), { qr: token, n, event: evId })).then((x) => updateStats(x.stats)).catch(() => toastLite('Počet hostů se neuložil')), 500);
+        return;
+      }
+      if (b.dataset.act === 'next') closeResult();
+      if (b.dataset.act === 'retry') checkin(token);
+      if (b.dataset.act === 'undo') {
+        b.disabled = true;
+        API.call('undo', Object.assign(auth(), { qr: token, event: evId })).then((x) => { updateStats(x.stats); closeResult(); }).catch((x) => { b.disabled = false; toastLite(x.message); });
+      }
+    };
+  }
+  function stopAuto() {
+    clearTimeout(autoTimer);
+    const t = $('#result .r-timer'); if (t) t.remove();
+  }
+  function closeResult() {
+    clearTimeout(autoTimer);
+    $('#result').hidden = true;
+    busy = false;
+    last.at = Date.now();
+    resumeCam();
+  }
+  function toastLite(msg) { camMsg(msg); setTimeout(() => camMsg(''), 3000); }
+
+  // ---------- Hledání ----------
+  let qTimer = 0;
+  $('#openSearch').addEventListener('click', () => {
+    busy = true; pauseCam();
+    $('#search').hidden = false; $('#q').value = ''; $('#results').innerHTML = '<li class="empty">Napište aspoň 2 písmena.</li>';
+    setTimeout(() => $('#q').focus(), 50);
+  });
+  $('#closeSearch').addEventListener('click', closeSearch);
+  function closeSearch() { $('#search').hidden = true; busy = false; resumeCam(); }
+  $('#q').addEventListener('input', () => {
+    clearTimeout(qTimer);
+    const q = $('#q').value.trim();
+    if (q.length < 2) { $('#results').innerHTML = '<li class="empty">Napište aspoň 2 písmena.</li>'; return; }
+    qTimer = setTimeout(async () => {
+      try {
+        const r = await API.call('search', Object.assign(auth(), { q, event: evId }));
+        if (q !== $('#q').value.trim()) return;
+        $('#results').innerHTML = r.results.length ? r.results.map((p) => `
+          <li><button type="button" data-t="${esc(p.qr)}">
+            <span><b>${esc(p.name)}</b><small>${esc([p.empNo ? 'č. ' + p.empNo : '', p.dept].filter(Boolean).join(' · '))}${p.guests ? ' · +' + p.guests : ''}${p.attendance === 'NE' ? ' · nepřijde' : p.attendance !== 'ANO' ? ' · nepotvrzeno' : ''}</small></span>
+            ${p.arrivedAt ? `<span class="badge in">✓ ${esc(p.arrivedAt)}</span>` : '<span class="badge no">Odbavit</span>'}
+          </button></li>`).join('') : '<li class="empty">Nikoho takového nemáme.</li>';
+      } catch (e) {
+        $('#results').innerHTML = `<li class="empty">${esc(e.message)}</li>`;
+      }
+    }, 250);
+  });
+  $('#results').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-t]'); if (!b) return;
+    $('#search').hidden = true;
+    checkin(b.dataset.t);
+  });
+
+  // ---------- Odhlášení ----------
+  async function logout(msg) {
+    pin = ''; entry = ''; store.set('zn-pin', ''); if (!API.demo) keyStore.set('');
+    clearInterval(statsTimer);
+    try { if (scanner) { await scanner.stop(); scanner.clear(); } } catch (e) {}
+    scanner = null;
+    try { wakeLock && wakeLock.release(); } catch (e) {}
+    $('#scanScreen').hidden = true; $('#evScreen').hidden = true; $('#pinScreen').hidden = false;
+    drawDots(); $('#pinErr').textContent = typeof msg === 'string' ? msg : '';
+  }
+  $('#logout').addEventListener('click', () => { if (confirm('Odhlásit tento telefon?')) { store.set('zn-ev', ''); evId = ''; logout(); } });
+
+  // obnovení po reloadu
+  if (API.demo) {
+    const saved = store.get('zn-pin');
+    if (saved) tryPin(saved);
+  } else {
+    // aktivační odkaz scanner.html#k=… → klíč uložit a z adresy odstranit
+    const m = location.hash.match(/[#&]k=([a-f0-9]{32,128})/i);
+    if (m) { keyStore.set(m[1]); history.replaceState(null, '', location.pathname + location.search); }
+    $('#keypad').hidden = true; $('#dots').hidden = true;
+    $('.pin h1').textContent = 'Skener';
+    $('.pin-hint').textContent = 'Otevřete na tomto telefonu odkaz pro skener, který dostanete od organizátora. Telefon si nechte nabitý.';
+    const k = keyStore.get();
+    if (k) tryPin(k); else $('#pinErr').textContent = 'Skener zatím není aktivovaný.';
+  }
+})();
+</script>
+</body>
+</html>

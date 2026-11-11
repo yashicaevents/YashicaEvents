@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<!-- Bezpečnost: GitHub Pages neumí hlavičky (_headers platí jen na Netlify), proto CSP i tady -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://script.google.com https://script.googleusercontent.com; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta name="robots" content="noindex">
+<title>Registrace</title>
+<script>
+// Úvodní adresa webu → rovnou registrace na akci Dukovany
+location.replace(location.protocol === 'file:' ? 'landing.html?c=cez&e=dukovany' : 'cez/dukovany');
+</script>
+</head>
+<body><a href="cez/dukovany">Pokračovat na registraci</a></body>
+</html>

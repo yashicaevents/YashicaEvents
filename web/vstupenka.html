@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<!-- Bezpečnost: GitHub Pages neumí hlavičky (_headers platí jen na Netlify), proto CSP i tady -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://script.google.com https://script.googleusercontent.com; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+<!-- Ochrana proti vložení stránky do cizího rámečku (clickjacking) – frame-ancestors v <meta> nefunguje -->
+<style id="antiClickjack">html{display:none!important}</style>
+<script>if (self === top) { var ac = document.getElementById('antiClickjack'); ac.parentNode.removeChild(ac); } else { top.location = self.location; }</script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Moje vstupenka</title>
+<meta name="theme-color" content="#1E1F2E">
+<meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<link rel="stylesheet" href="styles.css">
+<style>
+body { background: var(--gray); }
+main { padding: clamp(24px, 5vw, 64px) 0 96px; }
+.state { max-width: 560px; margin: 8vh auto; text-align: center; padding: 0 var(--pad); }
+.state h1 { font: 600 32px/1.15 var(--sans); letter-spacing: -.02em; margin: 16px 0 12px; }
+.state p { color: var(--muted); }
+
+.page-head { margin-bottom: 32px; }
+.page-head h1 { font: 600 clamp(32px, 4.4vw, 52px)/1.05 var(--sans); letter-spacing: -.03em; margin: 14px 0 0; }
+
+.banner { display: flex; gap: 16px; align-items: flex-start; padding: 20px 24px; margin-bottom: 24px; background: var(--white); border-left: 4px solid var(--ok); animation: slide .4s var(--ease); }
+.banner.no { border-color: var(--muted-2); }
+.banner .ico { flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--ok); color: #fff; }
+.banner.no .ico { background: var(--dark); }
+.banner.ask { border-color: var(--brand); }
+.banner.ask .ico { background: var(--brand); font-weight: 700; }
+.ask-btns { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.banner .ico svg { width: 18px; height: 18px; }
+.banner b { display: block; font-size: 18px; margin-bottom: 2px; }
+.banner span { color: var(--muted); }
+@keyframes slide { from { opacity: 0; transform: translateY(-8px); } }
+
+.grid { display: grid; grid-template-columns: minmax(0, 440px) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 880px) { .grid { grid-template-columns: 1fr; } }
+
+/* ---------- vstupenka ---------- */
+.ticket { background: var(--white); position: relative; filter: drop-shadow(0 24px 32px rgba(30,31,46,.12)); }
+.t-head { background: var(--dark); color: var(--white); padding: 24px 28px; position: relative; overflow: hidden; }
+.t-head::after { content: ""; position: absolute; right: -40px; top: -40px; width: 140px; height: 140px; border-radius: 50%; border: 24px solid var(--brand); opacity: .9; }
+.t-head .k { font: 600 12px/1 var(--sans); letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.6); }
+.t-head h2 { font: 600 30px/1.05 var(--sans); letter-spacing: -.02em; margin: 10px 0 6px; position: relative; z-index: 1; }
+.t-head p { margin: 0; color: rgba(255,255,255,.75); font-size: 15px; position: relative; z-index: 1; }
+.t-qr { padding: 28px 28px 20px; display: grid; justify-items: center; gap: 14px; }
+.qr { width: 100%; max-width: 280px; aspect-ratio: 1; padding: 14px; background: #fff; border: 1px solid var(--gray-2); }
+.qr canvas, .qr img { width: 100% !important; height: auto !important; image-rendering: pixelated; }
+.t-qr small { color: var(--muted); font-size: 13px; text-align: center; }
+.t-cut { position: relative; height: 0; border-top: 2px dashed var(--gray-2); margin: 0 18px; }
+.t-cut::before, .t-cut::after { content: ""; position: absolute; top: -13px; width: 24px; height: 24px; border-radius: 50%; background: var(--gray); }
+.t-cut::before { left: -30px; } .t-cut::after { right: -30px; }
+.t-body { padding: 22px 28px 28px; }
+.t-name { font: 600 24px/1.15 var(--sans); letter-spacing: -.015em; }
+.t-dept { color: var(--muted); font-size: 15px; margin-top: 2px; }
+.t-rows { margin: 18px 0 0; display: grid; gap: 0; }
+.t-rows div { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--gray-2); font-size: 15px; }
+.t-rows dt { color: var(--muted); }
+.t-rows dd { margin: 0; font-weight: 600; text-align: right; }
+.badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; font: 600 13px/1 var(--sans); letter-spacing: .06em; text-transform: uppercase; }
+.badge::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.badge.ok { background: var(--ok-soft); color: var(--ok); }
+.badge.no { background: var(--gray-2); color: var(--muted); }
+.badge.wait { background: #FFF4D6; color: #9A6B00; }
+.badge.in { background: var(--dark); color: var(--white); }
+.t-actions { display: grid; gap: 10px; padding: 0 28px 28px; }
+
+/* ---------- panel účasti ---------- */
+.panel { background: var(--white); padding: clamp(24px, 3.4vw, 40px); }
+.panel + .panel { margin-top: 24px; }
+.panel h3 { font: 600 26px/1.15 var(--sans); letter-spacing: -.02em; margin: 12px 0 8px; }
+.panel > p { color: var(--muted); margin: 0 0 24px; }
+.answer { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.ans {
+  display: flex; align-items: center; gap: 14px; min-height: 72px; padding: 16px 20px; cursor: pointer; text-align: left;
+  border: 1px solid var(--line); background: var(--white); font-size: 18px; font-weight: 600; transition: all .15s;
+}
+.ans .dot { flex: none; width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--muted-2); display: grid; place-items: center; transition: all .15s; }
+.ans small { display: block; font-size: 14px; font-weight: 400; color: var(--muted); }
+.ans:hover { border-color: var(--dark); }
+.ans[aria-pressed="true"].yes { border-color: var(--ok); box-shadow: inset 0 0 0 1px var(--ok); background: #F6FBF8; }
+.ans[aria-pressed="true"].yes .dot { background: var(--ok); border-color: var(--ok); }
+.ans[aria-pressed="true"].no { border-color: var(--dark); box-shadow: inset 0 0 0 1px var(--dark); background: var(--gray); }
+.ans[aria-pressed="true"].no .dot { background: var(--dark); border-color: var(--dark); }
+.ans[aria-pressed="true"] .dot::after { content: ""; width: 5px; height: 10px; border: solid #fff; border-width: 0 2px 2px 0; transform: translateY(-1px) rotate(45deg); }
+.ans:disabled { cursor: wait; opacity: .7; }
+@media (max-width: 520px) { .answer { grid-template-columns: 1fr; } }
+.note { margin-top: 20px; padding: 16px 18px; background: var(--gray); font-size: 15px; color: var(--muted); }
+.note b { color: var(--dark); }
+
+.edit { display: grid; gap: 22px; }
+.edit .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 600px) { .edit .form-row { grid-template-columns: 1fr; } }
+.edit-foot { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.saved { color: var(--ok); font-weight: 600; font-size: 15px; opacity: 0; transition: opacity .3s; }
+.saved.show { opacity: 1; }
+
+.timeline { list-style: none; margin: 0; padding: 0; display: grid; }
+.timeline li { display: grid; grid-template-columns: 64px 1fr; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--gray-2); font-size: 15px; color: var(--muted); }
+.timeline li:last-child { border: 0; }
+.timeline time { font-weight: 600; color: var(--dark); }
+.timeline li.past { opacity: .55; }
+.timeline li.past time::after { content: " ✓"; color: var(--ok); }
+
+</style>
+</head>
+<body>
+
+
+<main>
+  <div class="state" id="vLoading"><span class="spinner" style="width:36px;height:36px;color:var(--brand)"></span><p>Načítám vaši vstupenku…</p></div>
+  <div class="state" id="vError" hidden>
+    <span class="label">Vstupenka</span>
+    <h1>Tuhle vstupenku jsme nenašli</h1>
+    <p id="errText"></p>
+  </div>
+
+  <div class="wrap" id="vTicket" hidden>
+    <div class="page-head">
+      <span class="label">Moje vstupenka</span>
+      <h1 id="hello"></h1>
+    </div>
+    <div id="banner"></div>
+    <div class="notice" id="deadlineNote" role="note" hidden></div>
+
+    <div class="grid">
+      <!-- vstupenka -->
+      <article class="ticket" aria-label="Vstupenka">
+        <div class="t-head">
+          <div class="k" id="tSite"></div>
+          <h2 id="tCity"></h2>
+          <p id="tWhen"></p>
+        </div>
+        <div class="t-qr">
+          <div class="qr" id="qr" role="img" aria-label="QR kód vstupenky"></div>
+          <small>U vstupu ukažte tento kód. Kód ani odkaz na tuto stránku nikomu nepřeposílejte ani neukazujte!</small>
+        </div>
+        <div class="t-cut" aria-hidden="true"></div>
+        <div class="t-body">
+          <div class="t-name" id="tName"></div>
+          <dl class="t-rows">
+            <div><dt>Stav</dt><dd id="tState"></dd></div>
+            <div><dt>Místo</dt><dd id="tVenue"></dd></div>
+            <div><dt>Strava</dt><dd id="tDiet"></dd></div>
+            <div id="tEmpRow"><dt>Osobní číslo</dt><dd id="tEmp"></dd></div>
+            <div id="tTransportRow"><dt>Doprava na akci</dt><dd id="tTransport"></dd></div>
+            <div id="tTransportBackRow"><dt>Doprava z akce</dt><dd id="tTransportBack"></dd></div>
+          </dl>
+        </div>
+        <div class="t-actions">
+          <button class="btn btn-outline btn-block" id="saveQr" type="button">Uložit QR do telefonu</button>
+        </div>
+      </article>
+
+      <div>
+        <!-- účast -->
+        <section class="panel" aria-labelledby="attTitle">
+          <span class="label">Účast</span>
+          <h3 id="attTitle">Přijdete?</h3>
+          <p id="attText"></p>
+          <div class="answer">
+            <button class="ans yes" type="button" data-a="ANO" aria-pressed="false"><span class="dot"></span><span>Přijdu<small>Počítejte se mnou</small></span></button>
+            <button class="ans no" type="button" data-a="NE" aria-pressed="false"><span class="dot"></span><span>Nepřijdu<small>Uvolním místo</small></span></button>
+          </div>
+          <div class="note" id="attNote" hidden></div>
+        </section>
+
+        <!-- úpravy -->
+        <section class="panel" id="editPanel" aria-labelledby="editTitle">
+          <span class="label">Údaje</span>
+          <h3 id="editTitle">Strava a doprava</h3>
+          <p>Změnilo se něco? Upravte to tady, ať víme, co nachystat.</p>
+          <form class="edit" id="editForm" novalidate>
+            <fieldset class="fs" style="border:0;margin:0;padding:0;display:grid;gap:12px"><legend class="f-label" style="margin-bottom:12px">Strava <small>(můžete zvolit více možností)</small></legend><div class="chips" id="eDiet"></div></fieldset>
+            <label class="field"><span class="f-label">Alergie <small>(nepovinné)</small></span><input class="input" name="allergies" maxlength="200"></label>
+            <label class="check" id="eHealth"><input type="checkbox" name="healthConsent"><span>Souhlasím se zpracováním údaje o alergii (zdravotní údaj) výhradně pro přípravu jídla na této akci.</span></label>
+            <fieldset class="fs" id="eTransportFs" style="border:0;margin:0;padding:0;display:grid;gap:12px"><legend class="f-label" style="margin-bottom:12px">Doprava na akci</legend><div class="chips" id="eTransport"></div><small class="bus-info" id="eBusTo"></small><div id="eBus" class="bus-routes" hidden><span class="f-label">Směr svozového autobusu</span><div class="chips" id="eBusRoutes"></div></div></fieldset>
+            <fieldset class="fs" id="eBackFs" style="border:0;margin:0;padding:0;display:grid;gap:12px"><legend class="f-label" style="margin-bottom:12px">Doprava z akce</legend><div class="chips" id="eTransportBack"></div><small class="bus-info" id="eBusBack"></small></fieldset>
+            <div class="edit-foot">
+              <button class="btn btn-primary" type="submit" id="saveBtn">Uložit změny</button>
+              <span class="saved" id="saved" role="status">✓ Uloženo</span>
+            </div>
+          </form>
+        </section>
+
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="vendor/qrcode.min.js"></script>
+<script src="config.js"></script>
+<script src="js/demo-data.js"></script>
+<script src="js/api.js"></script>
+<script src="js/ui.js"></script>
+<script>
+(() => {
+  const { $, $$, esc } = UI;
+  const F = API.fmt;
+  const CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>';
+
+  // tajný odkaz je za # (neposílá se serveru webu); starší e-maily mají ?t=
+  const fromHash = /[#&]t=/.test(location.hash);
+  const params = new URLSearchParams(fromHash ? location.hash.slice(1) : location.search);
+  const token = API.parseToken(params.get('t') || '') || API.demoLastToken();
+  const fromMail = ({ ano: 'ANO', ne: 'NE' })[(params.get('a') || '').toLowerCase()] || '';
+  let t = null, ev = null, client = null, now = new Date(), qrFor = '';
+
+  UI.demoBar('Fiktivní data · odpověď Přijdu / Nepřijdu se skutečně uloží, e-maily se jen simulují');
+
+  function show(id) { ['vLoading', 'vError', 'vTicket'].forEach((x) => ($('#' + x).hidden = x !== id)); }
+  const over = () => now > new Date(API.dayDate(ev.date).setHours(23, 59));
+  // po uzávěrce (CONFIG.registration.deadline) už nejde měnit účast ani údaje
+  const locked = () => over() || (!!ev.registration.deadline && now > new Date(ev.registration.deadline));
+  function apply(r) { t = r.ticket; ev = r.event; client = r.client; now = new Date(r.now); }
+
+  async function init() {
+    if (!token) { $('#errText').textContent = 'V odkazu chybí kód vstupenky. Otevřete prosím odkaz z e-mailu.'; return show('vError'); }
+    try {
+      apply(await API.call('ticket', { token, raw: API.demo ? location.href : undefined }));
+      UI.applyBrand(client);
+      // Odkaz z e-mailu (?a=ano|ne) NIC nemění – poštovní antiviry odkazy předotevírají.
+      // Odpověď se uloží až po kliknutí na „Potvrdit“ na stránce.
+      params.delete('a');
+      history.replaceState(null, '', location.pathname + (fromHash ? '#' : '?') + params.toString());
+      render(); show('vTicket');
+      if (fromMail && fromMail !== t.attendance && !over()) askConfirm(fromMail);
+      else if (fromMail) banner(fromMail);
+    } catch (e) {
+      $('#errText').textContent = e.message; show('vError');
+    }
+  }
+
+  function askConfirm(a) {
+    $('#banner').innerHTML = `<div class="banner ask"><div class="ico">?</div><div style="flex:1"><b>${a === 'ANO' ? 'Potvrďte prosím: přijdete' : 'Potvrďte prosím: nepřijdete'}</b>
+      <span>Odpověď se uloží až po kliknutí na tlačítko.</span>
+      <div class="ask-btns"><button class="btn btn-primary" type="button" id="askYes">${a === 'ANO' ? 'Potvrdit: Přijdu' : 'Potvrdit: Nepřijdu'}</button><button class="btn btn-outline" type="button" id="askNo">Zrušit</button></div></div></div>`;
+    $('#banner').scrollIntoView({ block: 'center' });
+    $('#askNo').addEventListener('click', () => ($('#banner').innerHTML = ''));
+    $('#askYes').addEventListener('click', async () => {
+      $('#askYes').disabled = true;
+      try { apply(await API.call('rsvp', { token, attend: a })); banner(a); render(); }
+      catch (e) { UI.toast(e.message, 'err'); $('#askYes').disabled = false; }
+    });
+  }
+  function banner(a) {
+    $('#banner').innerHTML = a === 'ANO'
+      ? `<div class="banner"><div class="ico">${CHECK}</div><div><b>Díky, máme zapsáno: přijdete.</b><span>Potvrzení jsme Vám poslali e-mailem. Kdyby se cokoliv změnilo, stačí kliknout na Nepřijdu.</span></div></div>`
+      : `<div class="banner no"><div class="ico">${CHECK}</div><div><b>Rozumíme, máme zapsáno: nepřijdete.</b><span>Potvrzení jsme Vám poslali e-mailem. Kdyby to nakonec šlo, klikněte na Přijdu.</span></div></div>`;
+  }
+
+  function render() {
+    document.title = 'Moje vstupenka · ' + ev.name;
+    $('#hello').textContent = 'Tady je Vaše vstupenka'; // bez oslovení jménem (nedá se spolehlivě skloňovat)
+    $('#tSite').textContent = ev.audience || client.name;
+    $('#tCity').textContent = ev.name;
+    $('#tWhen').textContent = F.long(ev.date) + (ev.time ? ' · ' + ev.time : '') + (ev.city ? ' · ' + ev.city : '');
+    $('#tName').textContent = t.name;
+    $('#tVenue').textContent = ev.venue || 'Upřesníme';
+    $('#tDiet').textContent = t.diet;
+    $('#tTransportRow').hidden = !(ev.registration.transport || []).length;
+    $('#tTransport').textContent = t.transport || '—';
+    $('#tEmpRow').hidden = !t.empNo; $('#tEmp').textContent = t.empNo || '';
+    $('#tTransportBackRow').hidden = !(ev.registration.transportBack || []).length;
+    $('#tTransportBack').textContent = t.transportBack || '—';
+    const dn = $('#deadlineNote'), dlt = ev.registration.deadlineText;
+    dn.hidden = !dlt || over();
+    if (dlt) dn.innerHTML = locked()
+      ? `<b>Uzávěrka registrací a změn byla ${esc(dlt)}.</b>Změny už online provést nejdou. S dotazy se prosím obraťte na pořadatele.`
+      : `<b>Změny v registraci jsou možné pouze do ${esc(dlt)}.</b>Prosíme, zvažte svou účast a potvrďte ji, nebo zrušte co nejdříve.`;
+    $('#tState').innerHTML = t.arrivedAt ? `<span class="badge in">Na místě od ${esc(F.time(t.arrivedAt))}</span>`
+      : t.attendance === 'ANO' ? '<span class="badge ok">Účast potvrzena</span>'
+      : t.attendance === 'NE' ? '<span class="badge no">Nepřijde</span>'
+      : '<span class="badge wait">Čeká na potvrzení</span>';
+
+    // QR obsahuje jen kód pro odbavení (EVT1.…), ne odkaz na tuto stránku
+    if (qrFor !== t.qrText) { UI.qr($('#qr'), t.qrText, { dark: '#151827' }); qrFor = t.qrText; }
+
+    // účast
+    $$('.ans').forEach((b) => { b.setAttribute('aria-pressed', String(b.dataset.a === t.attendance)); b.disabled = locked(); });
+    const note = $('#attNote');
+    note.hidden = true;
+    const rsvpAt = API.automationAt(ev, 'rsvp');
+    if (over()) {
+      $('#attTitle').textContent = 'Akce už proběhla';
+      $('#attText').textContent = 'Účast už nejde měnit online.';
+    } else if (t.attendance === 'ANO') {
+      $('#attTitle').textContent = 'Počítáme s vámi';
+      $('#attText').textContent = 'Účast máte potvrzenou. Kdyby vám do toho něco přišlo, třeba nemoc, klikněte prosím na Nepřijdu.';
+    } else if (t.attendance === 'NE') {
+      $('#attTitle').textContent = 'Tentokrát bez vás';
+      $('#attText').textContent = 'Máme zapsáno, že nepřijdete. Kdyby se to změnilo, stačí kliknout na Přijdu.';
+    } else {
+      $('#attTitle').textContent = 'Přijdete?';
+      $('#attText').textContent = 'Dejte nám prosím vědět. Podle toho objednáváme jídlo a dopravu.';
+      if (rsvpAt && now < rsvpAt) {
+        note.hidden = false;
+        note.innerHTML = `<b>Nemusíte to řešit hned.</b> ${F.day(rsvpAt.toISOString())} vám pošleme e-mail, kde stačí kliknout na Přijdu, nebo Nepřijdu.`;
+      }
+    }
+    $('#editPanel').hidden = t.attendance === 'NE' || locked(); // po uzávěrce už údaje nejde měnit
+    if (!$('#editPanel').hidden) fillEdit();
+
+  }
+
+  // ---------- účast ----------
+  $$('.ans').forEach((b) => b.addEventListener('click', async () => {
+    if (b.getAttribute('aria-pressed') === 'true') return;
+    $$('.ans').forEach((x) => (x.disabled = true));
+    try { apply(await API.call('rsvp', { token, attend: b.dataset.a })); banner(b.dataset.a); render(); }
+    catch (e) { UI.toast(e.message, 'err'); }
+    $$('.ans').forEach((x) => (x.disabled = locked()));
+  }));
+
+  // ---------- úpravy ----------
+  let filledFor = '';
+  const chips = (name, list, sel, type = 'radio') => list.map((x) => `<label class="chip"><input type="${type}" name="${name}" value="${esc(x)}" ${[].concat(sel).includes(x) ? 'checked' : ''}><span>${esc(x)}</span></label>`).join('');
+  const routesOf = (r) => r.busOption && (r.busRoutes || []).length ? r.busRoutes : [];
+  const busOn = () => (($('#editForm input[name=transport]:checked') || {}).value === ev.registration.busOption) && routesOf(ev.registration).length > 0;
+  $('#editForm').addEventListener('change', (e) => { if (e.target.name === 'transport') $('#eBus').hidden = !busOn(); });
+  function fillEdit() {
+    const r = ev.registration;
+    const key = JSON.stringify([t.diet, t.allergies, t.transport, t.transportBack, t.guests, t.guestNames, t.guestDiets]);
+    if (filledFor === key) return; filledFor = key;
+    const f = $('#editForm');
+    $('#eDiet').innerHTML = chips('diet', r.diets, String(t.diet || '').split(', '), 'checkbox');
+    f.elements.allergies.value = t.allergies || '';
+    f.elements.healthConsent.checked = !!t.allergies;
+    if ((r.transport || []).length) {
+      const cur = t.transport || r.transport[0], pre = r.busOption + ' – ', onBus = !!r.busOption && cur.indexOf(pre) === 0;
+      $('#eTransport').innerHTML = chips('transport', r.transport, onBus ? r.busOption : cur);
+      $('#eBusRoutes').innerHTML = chips('busRoute', routesOf(r), onBus ? cur.slice(pre.length) : null);
+      $('#eBus').hidden = !busOn();
+      $('#eBusTo').textContent = (r.busInfo || {}).to ? '🚌 ' + r.busInfo.to : '';
+    }
+    else $('#eTransportFs').hidden = true;
+    if ((r.transportBack || []).length) {
+      $('#eTransportBack').innerHTML = chips('transportBack', r.transportBack, t.transportBack || r.transportBack[0]);
+      $('#eBusBack').textContent = (r.busInfo || {}).back ? '🚌 ' + r.busInfo.back : '';
+    } else $('#eBackFs').hidden = true;
+    if (false) { // doprovod se neregistruje
+      $('#eGuests').innerHTML = Array.from({ length: r.maxGuests + 1 }, (_, i) =>
+        `<label class="chip"><input type="radio" name="guests" value="${i}" ${i === t.guests ? 'checked' : ''}><span>${i === 0 ? 'Bez doprovodu' : '+' + i}</span></label>`).join('');
+      drawGuests(t.guestNames || [], t.guestDiets || []);
+    }
+  }
+  function drawGuests(names, diets) {
+    const n = +(($('#editForm input[name=guests]:checked') || {}).value || 0);
+    $('#eGuestRows').innerHTML = Array.from({ length: n }, (_, i) => `
+      <div class="g form-row">
+        <label class="field"><span class="f-label">Jméno doprovodu <small>(nepovinné)</small></span><input class="input" maxlength="80" value="${esc((names[i] || '').replace(/^Doprovod \d+$/, ''))}"></label>
+        <label class="field"><span class="f-label">Strava doprovodu</span><select class="select">${ev.registration.diets.map((x) => `<option ${x === diets[i] ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
+      </div>`).join('');
+  }
+  if ($('#eGuests')) $('#eGuests').addEventListener('change', () => {
+    const g = $$('#eGuestRows .g');
+    drawGuests(g.map((x) => $('input', x).value), g.map((x) => $('select', x).value));
+  });
+  $('#editForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target, g = $$('#eGuestRows .g');
+    const diets = $$('input[name=diet]:checked', f).map((x) => x.value);
+    if (!diets.length) return UI.toast('Vyberte prosím stravu.', 'err');
+    const route = ($('input[name=busRoute]:checked', f) || {}).value;
+    if (busOn() && !route) return UI.toast('Vyberte prosím směr svozového autobusu.', 'err');
+    const tr = ($('input[name=transport]:checked', f) || {}).value || '';
+    const btn = $('#saveBtn'); btn.disabled = true;
+    try {
+      apply(await API.call('rsvp', {
+        token, attend: null,
+        diet: diets.join(', '), diets,
+        transport: busOn() ? tr + ' – ' + route : tr,
+        transportBack: ($('input[name=transportBack]:checked', f) || {}).value || '',
+        allergies: f.elements.allergies.value, healthConsent: f.elements.healthConsent.checked,
+        guests: g.length, guestNames: g.map((x) => $('input', x).value), guestDiets: g.map((x) => $('select', x).value),
+      }));
+      filledFor = ''; render();
+      $('#saved').classList.add('show'); setTimeout(() => $('#saved').classList.remove('show'), 2500);
+    } catch (err) { UI.toast(err.message, 'err'); }
+    btn.disabled = false;
+  });
+
+  $('#saveQr').addEventListener('click', () => {
+    const c = $('#qr canvas');
+    if (!c) return UI.toast('QR se nepodařilo uložit, udělejte prosím snímek obrazovky.');
+    const a = document.createElement('a');
+    a.href = c.toDataURL('image/png'); a.download = 'vstupenka-qr.png';
+    document.body.appendChild(a); a.click(); a.remove();
+  });
+
+  init();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<!-- Bezpečnost: GitHub Pages neumí hlavičky (_headers platí jen na Netlify), proto CSP i tady -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://script.google.com https://script.googleusercontent.com; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta name="robots" content="noindex">
+<title>Přesměrování…</title>
+<script>
+/* GitHub Pages a jiné hostingy bez přesměrování: /cez/dukovany → landing.html?c=cez&e=dukovany
+   BASE = složka, kde web běží (na doméně "/", na GitHub Pages projektu "/nazev-repa/"). */
+(function () {
+  var BASE = /\.github\.io$/.test(location.hostname) && location.pathname.split('/')[1] ? '/' + location.pathname.split('/')[1] + '/' : '/';
+  var rel = decodeURIComponent(location.pathname).slice(BASE.length).replace(/^\/+|\/+$/g, '').split('/');
+  if (!rel[0]) { location.replace(BASE); return; }
+  location.replace(BASE + 'landing.html?c=' + encodeURIComponent(rel[0]) + (rel[1] ? '&e=' + encodeURIComponent(rel[1]) : ''));
+})();
+</script>
+</head>
+<body></body>
+</html>
